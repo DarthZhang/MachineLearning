@@ -5,7 +5,6 @@ import config
 
 
 path = config.path
-
 type_1 = []  # I or E
 type_2 = []  # S or N
 type_3 = []  # T or F
@@ -14,7 +13,6 @@ type_4 = []  # J or P
 
 df = pd.read_csv(path)
 
-# print df['type']
 
 def split_logic(composite_type):
     global type_1
