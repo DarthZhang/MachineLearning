@@ -202,7 +202,7 @@ if plot_conf_matrix == True:
 
 
 
-For summary of results between models and methods:
+#For summary of results between models and methods:
 #============================================================================================
 print('Computing NB and SVM in all different ways...')
 
