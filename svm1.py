@@ -4,9 +4,6 @@ import pandas as pd
 
 from sklearn.metrics import f1_score
 from sklearn.naive_bayes import MultinomialNB
-import numpy as np
-import os
-import pandas as pd
 import itertools
 import collections
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
@@ -18,9 +15,10 @@ from sklearn.naive_bayes import MultinomialNB
 from nltk.stem import WordNetLemmatizer
 from sklearn.metrics import f1_score
 import random
-import os
 import sys
 from sklearn.model_selection import train_test_split
+from nltk.tokenize.casual import TweetTokenizer
+
 
 # Alternative paths
 path = '/Users/danielmlow/Dropbox/lct/ml/project/'
@@ -134,12 +132,30 @@ def plot_confusion_matrix(cm, classes,
 ##============================================================================================
 # X, Y = read_corpus(path + corpus)
 
+
 X = df['posts'].tolist()
 
 Y = df['type'].tolist()
 
-split_point = int(0.7 * len(X))
-Xtrain = X[:split_point]
+# Clean data
+##============================================================
+tokenizer = TweetTokenizer(preserve_case=False, reduce_len=True, strip_handles=True)
+
+X1 = []
+
+for i in X:
+    i.replace('|||',' ')
+    tokens = tokenizer.tokenize(i)
+    for j in tokens:
+        if j.startswith('http',):
+            tokens.remove(j)
+    X1.append(tokens)
+
+
+# Case Fold, Lemmatize, Punctuation, Stemmer , Stopwords
+
+split_point = int(0.7 * len(X1))
+Xtrain = X1[:split_point]
 Ytrain = Y[:split_point]
 Xvalidation = X[split_point:(split_point+1301)]
 Yvalidation = Y[split_point:(split_point+1301)]
@@ -150,7 +166,7 @@ Ytest = Y[(split_point+1301):-1]
 
 # Test a single model and method
 ##============================================================================================
-model = 'SVM'
+model = 'linearSVC'
 vectorizer = 'ngrams'
 
 
@@ -185,8 +201,8 @@ f1 = f1_score(Yvalidation, Yguess, average='weighted')
 print(round(f1,4)*100)
 
 # Classification report
-class_names = ['books', 'camera', 'dvd', 'health', 'music', 'software']
-report = classification_report(Ytest, Yguess,target_names=class_names)
+# class_names = ['books', 'camera', 'dvd', 'health', 'music', 'software']
+report = classification_report(Yvalidation, Yguess)
 print(report)
 df = classification_report_df(report)
 # print(df)
@@ -202,7 +218,7 @@ if plot_conf_matrix == True:
 
 
 
-#For summary of results between models and methods:
+For summary of results between models and methods:
 #============================================================================================
 print('Computing NB and SVM in all different ways...')
 
