@@ -141,15 +141,16 @@ Y = df['type'].tolist()
 ##============================================================
 tokenizer = TweetTokenizer(preserve_case=False, reduce_len=True, strip_handles=True)
 
-X1 = []
 
-for i in X:
-    i.replace('|||',' ')
+X1 = []
+for i in X[:2]:
     tokens = tokenizer.tokenize(i)
     for j in tokens:
-        if j.startswith('http',):
+        if j.startswith('http'):
             tokens.remove(j)
-    X1.append(tokens)
+    if '| | |' in tokens:
+        tokens.remove('| | |')
+    X1.append(' '.join(tokens))
 
 
 # Case Fold, Lemmatize, Punctuation, Stemmer , Stopwords
@@ -167,8 +168,7 @@ Ytest = Y[(split_point+1301):-1]
 # Test a single model and method
 ##============================================================================================
 model = 'linearSVC'
-vectorizer = 'ngrams'
-
+vectorizer = 'unigram'
 
 
 if model == 'SVM':
@@ -220,61 +220,61 @@ if plot_conf_matrix == True:
 
 For summary of results between models and methods:
 #============================================================================================
-print('Computing NB and SVM in all different ways...')
-
-d3 = {}
-
-model
-vectorizer = []
-
-for i in range(6):
-    if i == 0:
-        model = 'NB'
-        vectorizer = 'unigram'
-    elif i == 1:
-        model = 'NB'
-        vectorizer = 'ngrams'
-    elif i == 2:
-        model = 'NB'
-        vectorizer = 'lemmatizer'
-    elif i == 3:
-        model = 'SVM'
-        vectorizer = 'unigram'
-    elif i == 4:
-        model = 'SVM'
-        vectorizer = 'ngrams'
-    elif i == 5:
-        model = 'SVM'
-        vectorizer = 'lemmatizer'
-    if model == 'SVM':
-        clf = LinearSVC()
-    elif model == 'NB':
-        clf = MultinomialNB()
-    if vectorizer == 'ngrams':
-        vect = CountVectorizer(ngram_range=(1, 3), max_features=100000)
-    elif vectorizer == 'lemmatizer':
-        lemmatizer = WordNetLemmatizer()
-        def lemmatized_words(doc):
-            return (lemmatizer.lemmatize(w) for w in analyzer(doc))
-        analyzer = CountVectorizer().build_analyzer()
-        vect = CountVectorizer(analyzer=lemmatized_words)
-    elif vectorizer == 'unigram':
-        vect = CountVectorizer(max_features=50000)
-
-    text_clf = Pipeline([('vect', vect),
-                         ('tfidf', TfidfTransformer()),
-                         ('clf', clf), ])
-
-
-    text_clf.fit(Xtrain, Ytrain)
-    Yguess = text_clf.predict(Xtest)
-    acc = np.mean(Yguess == Ytest)
-    f1 = f1_score(Ytest, Yguess, average='weighted')*100
-    d3[model+' '+vectorizer] = round(f1,2)
-    print(f1)
-
-data = pd.DataFrame(columns=d3.keys())
-data = data.append(pd.DataFrame(d3, index=[0]), ignore_index=True)
-data = data.transpose()
-data.columns =['model']
-print(data)
+# print('Computing NB and SVM in all different ways...')
+#
+# d3 = {}
+#
+# model
+# vectorizer = []
+#
+# for i in range(6):
+#     if i == 0:
+#         model = 'NB'
+#         vectorizer = 'unigram'
+#     elif i == 1:
+#         model = 'NB'
+#         vectorizer = 'ngrams'
+#     elif i == 2:
+#         model = 'NB'
+#         vectorizer = 'lemmatizer'
+#     elif i == 3:
+#         model = 'SVM'
+#         vectorizer = 'unigram'
+#     elif i == 4:
+#         model = 'SVM'
+#         vectorizer = 'ngrams'
+#     elif i == 5:
+#         model = 'SVM'
+#         vectorizer = 'lemmatizer'
+#     if model == 'SVM':
+#         clf = LinearSVC()
+#     elif model == 'NB':
+#         clf = MultinomialNB()
+#     if vectorizer == 'ngrams':
+#         vect = CountVectorizer(ngram_range=(1, 3), max_features=100000)
+#     elif vectorizer == 'lemmatizer':
+#         lemmatizer = WordNetLemmatizer()
+#         def lemmatized_words(doc):
+#             return (lemmatizer.lemmatize(w) for w in analyzer(doc))
+#         analyzer = CountVectorizer().build_analyzer()
+#         vect = CountVectorizer(analyzer=lemmatized_words)
+#     elif vectorizer == 'unigram':
+#         vect = CountVectorizer(max_features=50000)
+#
+#     text_clf = Pipeline([('vect', vect),
+#                          ('tfidf', TfidfTransformer()),
+#                          ('clf', clf), ])
+#
+#
+#     text_clf.fit(Xtrain, Ytrain)
+#     Yguess = text_clf.predict(Xtest)
+#     acc = np.mean(Yguess == Ytest)
+#     f1 = f1_score(Ytest, Yguess, average='weighted')*100
+#     d3[model+' '+vectorizer] = round(f1,2)
+#     print(f1)
+#
+# data = pd.DataFrame(columns=d3.keys())
+# data = data.append(pd.DataFrame(d3, index=[0]), ignore_index=True)
+# data = data.transpose()
+# data.columns =['model']
+# print(data)
