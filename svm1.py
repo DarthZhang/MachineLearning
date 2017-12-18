@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import pandas as pd
-
+import http_cleaner
 from sklearn.metrics import f1_score
 from sklearn.naive_bayes import MultinomialNB
 import itertools
@@ -141,17 +141,19 @@ Y = df['type'].tolist()
 ##============================================================
 tokenizer = TweetTokenizer(preserve_case=False, reduce_len=True, strip_handles=True)
 
+clear_http = http_cleaner.Mycleaner()
+
 
 X1 = []
 for i in X[:2]:
+    tmp_tokens = []
     tokens = tokenizer.tokenize(i)
     for j in tokens:
-        if j.startswith('http'):
-            tokens.remove(j)
-    if '| | |' in tokens:
-        tokens.remove('| | |')
-    X1.append(' '.join(tokens))
-
+        tmp = clear_http.clean(j)
+        tmp_tokens.append(tmp)
+    X1.append(' '.join(tmp_tokens))
+print(X1)
+exit(0)
 
 # Case Fold, Lemmatize, Punctuation, Stemmer , Stopwords
 
@@ -218,7 +220,7 @@ if plot_conf_matrix == True:
 
 
 
-For summary of results between models and methods:
+#For summary of results between models and methods:
 #============================================================================================
 # print('Computing NB and SVM in all different ways...')
 #
