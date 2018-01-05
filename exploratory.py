@@ -1,10 +1,8 @@
 import pandas as pd
-
-
 import config
 
 
-path = config.path
+path = config.path_corpus
 dict_types = {}
 count_I = 0
 count_E = 0
@@ -33,12 +31,12 @@ for type in df['type']:
 
 
 # Average should be 8675/16 = 542.1875
-print 'Composite types counts:'
+print('Composite types counts:')
 for key, value in dict_types.items():
-    print key + ' : ' + str(value)
+    print(key + ' : ' + str(value))
 
 
-print '\n\n\nIndividual types count:'
+print('\n\n\nIndividual types count:')
 for key, value in dict_types.items():
     letters = list(key)
     if letters[0] == 'I':
@@ -58,7 +56,7 @@ for key, value in dict_types.items():
     else:
         count_P = count_P + value
 
-print 'I : ' + str(count_I) + ' , E : ' + str(count_E)
-print 'S : ' + str(count_S) + ' , N : ' + str(count_N)
-print 'T : ' + str(count_T) + ' , F : ' + str(count_F)
-print 'J : ' + str(count_J) + ' , P : ' + str(count_P)
+print('I : ' + str(count_I) + ' , E : ' + str(count_E))
+print('S : ' + str(count_S) + ' , N : ' + str(count_N))
+print('T : ' + str(count_T) + ' , F : ' + str(count_F))
+print('J : ' + str(count_J) + ' , P : ' + str(count_P))

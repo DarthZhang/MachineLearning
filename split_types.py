@@ -1,10 +1,11 @@
 import pandas as pd
-
-
 import config
+import importlib
+importlib.reload(config)
 
 
-path = config.path
+
+path = config.path_corpus
 type_1 = []  # I or E
 type_2 = []  # S or N
 type_3 = []  # T or F
@@ -41,3 +42,4 @@ new_df['posts'] = df['posts']
 # print new_df
 
 new_df.to_csv(config.output_path)
+
