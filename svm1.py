@@ -17,18 +17,18 @@ from sklearn.metrics import f1_score
 import random
 import sys
 from sklearn.model_selection import train_test_split
-from nltk.tokenize.casual import TweetTokenizer
 import sys
 import importlib
 import random
 import config
-importlib.reload(config)
-path = config.path_corpus
-sys.path.append(path)
 import split_types
-import http_cleaner
+import data_cleaner
 from sklearn import preprocessing
 
+
+importlib.reload(config)
+path = config.corpus
+sys.path.append(path)
 
 plot_conf_matrix = False
 print_report_for_latex = False
@@ -89,43 +89,23 @@ def plot_confusion_matrix(cm, classes,
 
 # Partial label
 df = split_types.new_df  # partial label (e.g., I)
-df = df.sample(frac=1)
+df = df.sample(frac=1) # frac specifies a fraction of the whole dataset, e.g 0.5 -> 50%
 
+#Save it in order to skip loading time
 df.to_csv(config.path+'df.csv')
 
 X = df['posts'].tolist()
 
 # Clean data
 ##============================================================
-tokenizer = TweetTokenizer(preserve_case=False, reduce_len=True, strip_handles=True)
-clear_http = http_cleaner.Mycleaner()
-
-def preprocess1(listOfLists):
-    # not removing URLs
-    X1 = []
-    for i in listOfLists:
-        i = i.replace('|||', ' ')
-        tokens = tokenizer.tokenize()
-        X1.append(' '.join(tokens))
-    return X1
-
-def preprocess1(listOfLists):
-	'''removing URLs'''
-	X1 = []
-	for i in listOfLists:
-	    i = i.replace('|||', ' ')
-	    tmp_tokens = []
-	    tokens = tokenizer.tokenize(i)
-	    for j in tokens:
-	        tmp = clear_http.clean(j)
-	        tmp_tokens.append(tmp)
-	    X1.append(' '.join(tmp_tokens).replace('  ',' '))
-	return X1
-
+data_cleaner = data_cleaner.data_cleaner()
 
 # np.save(config.path+'X1',X1)
 
 X1 = np.load(config.path+'X1.npy').tolist()
+#print(preprocess2(X))
+#print(X1)
+#exit(0)
 
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
@@ -211,7 +191,7 @@ print(data)
 # =========
 a = ["my first post as a travel blogger in ohlala magazine!! It is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for them from sweden! great way to close the year. if you read some spanish check it out, if not you can use facebook translate! more in my travel instagram. my first post as a travel blogger in ohlala magazine! it is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for"]
 
-a = preprocess1(a)
+a = data_cleaner.preprocess1(a)
 
 '''Predict personality with a given text'''
 
@@ -227,6 +207,7 @@ for i in labels:
                          ('clf', clf), ])
     text_clf.fit(Xtrain, Ytrain)
     Yguess = text_clf.predict(a)
+    print("Example Gueess:")
     print(Yguess)
 
 
