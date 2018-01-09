@@ -24,7 +24,7 @@ import config
 import split_types
 import data_cleaner
 from sklearn import preprocessing
-
+from sklearn.utils import resample
 
 importlib.reload(config)
 path = config.corpus
@@ -33,7 +33,7 @@ sys.path.append(path)
 plot_conf_matrix = False
 print_report_for_latex = False
 print_report = True
-liwc = False #True = liwc, False = TFIDF
+features = 'tfidf' #tfidf, liwc, both
 
 def classification_report_df(report):
     report_data = []
@@ -89,10 +89,12 @@ def plot_confusion_matrix(cm, classes,
 
 # Partial label
 df = split_types.new_df  # partial label (e.g., I)
-df = df.sample(frac=1) # frac specifies a fraction of the whole dataset, e.g 0.5 -> 50%
+
+
+df = df.sample(frac=1, random_state=123) # randomizes whole dataframe
 
 #Save it in order to skip loading time
-df.to_csv(config.path+'df.csv')
+# df.to_csv(config.path+'df.csv')
 
 X = df['posts'].tolist()
 
@@ -100,12 +102,10 @@ X = df['posts'].tolist()
 ##============================================================
 data_cleaner = data_cleaner.data_cleaner()
 
+# X1 = data_cleaner.preprocess1(X)
 # np.save(config.path+'X1',X1)
 
 X1 = np.load(config.path+'X1.npy').tolist()
-#print(preprocess2(X))
-#print(X1)
-#exit(0)
 
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
@@ -134,7 +134,36 @@ def normalize(df):
 
 # Split data and run for the four labels
 # ========
-if liwc:
+
+def oversample(Xtrain,Ytrain,label):
+    # Separate majority and minority classes
+    df_labels = pd.Series(np.array(Ytrain))
+    df_posts = pd.Series(np.array(Xtrain))
+    df = pd.concat([df_labels,df_posts], axis=1)
+
+    if label == 'type_1':
+        df_majority = df[df.iloc[:,0]  == 'I']
+        df_minority = df[df.iloc[:,0]  == 'E']
+    elif label == 'type_2':
+        df_majority = df[df.iloc[:,0]  == 'N']
+        df_minority = df[df.iloc[:,0]  == 'S']
+    elif label == 'type_3':
+        df_majority = df[df.iloc[:,0]  == 'F']
+        df_minority = df[df.iloc[:,0]  == 'T']
+    elif label == 'type_4':
+        df_majority = df[df.iloc[:,0]  == 'P']
+        df_minority = df[df.iloc[:,0] == 'J']
+    # Upsample minority class
+    df_minority_upsampled = resample(df_minority,
+                                     replace=True,  # sample with replacement
+                                     n_samples=df_majority.shape[0],  # to match majority class
+                                     random_state=123)  # reproducible results
+
+    # Combine majority class with upsampled minority class
+    df_upsampled = pd.concat([df_majority, df_minority_upsampled])
+    return df_upsampled
+
+if features == 'liwc':
     '''liwc features'''
     liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
     liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
@@ -149,16 +178,17 @@ if liwc:
         Ytrain = Y[:split_point]
         Yvalidation = Y[split_point:(split_point+1301)]
         Ytest = Y[(split_point+1301):-1]
-        clf = LinearSVC()
+        clf = LinearSVC(class_weight='balanced')
         clf.fit(Xtrain1, Ytrain)
         Yguess = clf.predict(Xvalidation1)
         f1 = f1_score(Yvalidation, Yguess, average='weighted')
         report = classification_report(Yvalidation, Yguess)
         print(report)
         d[i]=round(f1, 4) * 100
-else:
+elif features == 'tfidf':
     '''TFIDF features'''
     Xtrain = X1[:split_point]
+    labels = df.columns[:-1]
     Xvalidation = X1[split_point:(split_point+1301)]
     Xtest = X1[(split_point + 1301):-1]
     d = {}
@@ -168,7 +198,12 @@ else:
         Ytrain = Y[:split_point]
         Yvalidation = Y[split_point:(split_point+1301)]
         Ytest = Y[(split_point+1301):-1]
-        clf = LinearSVC()
+
+        train_oversample = oversample(Xtrain, Ytrain, i) #oversample
+        Ytrain = train_oversample.iloc[:,0]
+        Xtrain = train_oversample.iloc[:,1]
+
+        clf = LinearSVC(class_weight='balanced')
         vect = CountVectorizer(max_features=50000)
         text_clf = Pipeline([('vect', vect),
                              ('tfidf', TfidfTransformer()),
@@ -180,6 +215,14 @@ else:
         report = classification_report(Yvalidation, Yguess)
         print(report)
         d[i]=round(f1, 4) * 100
+elif features == 'both':
+    '''
+    1. normalize 
+    '''
+    # liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
+
+
+
 
 data = pd.DataFrame(columns=d.keys())
 data = data.append(pd.DataFrame(d, index=[0]), ignore_index=True)
