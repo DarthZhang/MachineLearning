@@ -11,7 +11,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 from sklearn.svm import LinearSVC, SVC
-from sklearn.naive_bayes import MultinomialNB
 from nltk.stem import WordNetLemmatizer
 from sklearn.metrics import f1_score
 import random
@@ -19,20 +18,23 @@ import sys
 from sklearn.model_selection import train_test_split
 import sys
 import importlib
-import random
 import config
 import split_types
 import data_cleaner
 from sklearn import preprocessing
 from sklearn.utils import resample
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-importlib.reload(config)
+
+# importlib.reload(config)
 path = config.corpus
 sys.path.append(path)
 
 plot_conf_matrix = False
 print_report_for_latex = False
 print_report = True
+
+# Select the type of features
 features = 'tfidf' #tfidf, liwc, both
 
 def classification_report_df(report):
@@ -106,6 +108,7 @@ data_cleaner = data_cleaner.data_cleaner()
 # np.save(config.path+'X1',X1)
 
 X1 = np.load(config.path+'X1.npy').tolist()
+# X1 = np.load(config.path+'X1.npy')
 
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
@@ -163,16 +166,18 @@ def oversample(Xtrain,Ytrain,label):
     df_upsampled = pd.concat([df_majority, df_minority_upsampled])
     return df_upsampled
 
+
+labels = df.columns[:-1]
+'''liwc features'''
+liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
+liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
+liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
+liwc_validation_normalized = normalize(liwc_validation.iloc[:, 2:])
 if features == 'liwc':
-    '''liwc features'''
-    liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
-    liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
-    liwc_train_normalized = normalize(liwc_train.iloc[:,2:])
-    liwc_validation_normalized = normalize(liwc_validation.iloc[:,2:])
     Xtrain1 = np.array(liwc_train_normalized)
+    # print Xtrain1.shape
     Xvalidation1 = np.array(liwc_validation_normalized)
     d = {}
-    labels = df.columns[:-1]
     for i in labels:
         Y = df[i].tolist()
         Ytrain = Y[:split_point]
@@ -188,7 +193,6 @@ if features == 'liwc':
 elif features == 'tfidf':
     '''TFIDF features'''
     Xtrain = X1[:split_point]
-    labels = df.columns[:-1]
     Xvalidation = X1[split_point:(split_point+1301)]
     Xtest = X1[(split_point + 1301):-1]
     d = {}
@@ -208,6 +212,8 @@ elif features == 'tfidf':
         text_clf = Pipeline([('vect', vect),
                              ('tfidf', TfidfTransformer()),
                              ('clf', clf),])
+
+
         text_clf.fit(Xtrain, Ytrain)
         Yguess = text_clf.predict(Xvalidation)
         acc = np.mean(Yguess == Yvalidation)
@@ -216,10 +222,20 @@ elif features == 'tfidf':
         print(report)
         d[i]=round(f1, 4) * 100
 elif features == 'both':
-    '''
-    1. normalize 
-    '''
+    Xtrain_liwc = np.array(liwc_train_normalized)
+    Xvalidation_liwc = np.array(liwc_validation_normalized)
+
+    Xtrain_texts = X1[:split_point]
+    Xvalidation_texts = X1[split_point:(split_point+1301)]
+    vectorizer = TfidfVectorizer(min_df=1, stop_words="english", max_features=50000)
+    Xtrain_tfidf = vectorizer.fit_transform(Xtrain_texts).toarray()
+    Xvalidation_tfidf = vectorizer.fit_transform(Xvalidation_texts).toarray()
+    print Xtrain_tfidf.shape
+    print Xvalidation_tfidf.shape
+
     # liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
+    for i in labels:
+        print 'classification report'
 
 
 
@@ -232,26 +248,30 @@ print(data)
 
 
 # =========
-a = ["my first post as a travel blogger in ohlala magazine!! It is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for them from sweden! great way to close the year. if you read some spanish check it out, if not you can use facebook translate! more in my travel instagram. my first post as a travel blogger in ohlala magazine! it is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for"]
+a = ["my first post as a travel blogger in ohlala magazine!! It is one of the biggest - if not the biggest and most read"
+     " magazine by women in argentina, cannot believe i am collaborating for them from sweden! great way to close the "
+     "year. if you read spme spanish check it out, if not, you can use facebook translate! more in my travel instagram. "
+     "my first post as a travel blogger in ohlala magazine! it is one of the biggest - if not the biggest and most read "
+     "magazine by women in argentina, cannot believe i am collaborating for"]
 
 a = data_cleaner.preprocess1(a)
 
 '''Predict personality with a given text'''
 
 labels = df.columns[:-1]
-for i in labels:
-    Y = df[i].tolist()
-    Ytrain = Y[:split_point]
-    Ytest = Y[(split_point + 1301):-1]
-    clf = LinearSVC()
-    vect = CountVectorizer(max_features=50000)
-    text_clf = Pipeline([('vect', vect),
-                         ('tfidf', TfidfTransformer()),
-                         ('clf', clf), ])
-    text_clf.fit(Xtrain, Ytrain)
-    Yguess = text_clf.predict(a)
-    print("Example Gueess:")
-    print(Yguess)
+# for i in labels:
+#     Y = df[i].tolist()
+#     Ytrain = Y[:split_point]
+#     Ytest = Y[(split_point + 1301):-1]
+#     clf = LinearSVC()
+#     vect = CountVectorizer(max_features=50000)
+#     text_clf = Pipeline([('vect', vect),
+#                          ('tfidf', TfidfTransformer()),
+#                          ('clf', clf), ])
+#     text_clf.fit(Xtrain, Ytrain)
+#     Yguess = text_clf.predict(a)
+#     print("Example Gueess:")
+#     print(Yguess)
 
 
 # Test a single model and method
