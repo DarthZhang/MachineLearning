@@ -33,6 +33,7 @@ sys.path.append(path)
 plot_conf_matrix = False
 print_report_for_latex = False
 print_report = True
+oversample1 = False
 
 # Select the type of features
 features = 'tfidf' #tfidf, liwc, both
@@ -91,23 +92,21 @@ def plot_confusion_matrix(cm, classes,
 
 # Partial label
 df = split_types.new_df  # partial label (e.g., I)
-
-
-df = df.sample(frac=1, random_state=123) # randomizes whole dataframe
-
-#Save it in order to skip loading time
-# df.to_csv(config.path+'df.csv')
-
-X = df['posts'].tolist()
+df = df.sample(frac=1, random_state=123) # should randomize whole dataframe)
 
 # Clean data
 ##============================================================
 data_cleaner = data_cleaner.data_cleaner()
 
+## First time you run:
+# X = df['posts'].tolist()
+# print('preprocessing corpus...')
 # X1 = data_cleaner.preprocess1(X)
-# np.save(config.path+'X1',X1)
+# print('Done preprocessing')
+# np.save(config.path+'X2',X1)
 
-X1 = np.load(config.path+'X1.npy').tolist()
+# After:
+X1 = np.load(config.path+'X2.npy').tolist()
 # X1 = np.load(config.path+'X1.npy')
 
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
@@ -202,11 +201,10 @@ elif features == 'tfidf':
         Ytrain = Y[:split_point]
         Yvalidation = Y[split_point:(split_point+1301)]
         Ytest = Y[(split_point+1301):-1]
-
-        train_oversample = oversample(Xtrain, Ytrain, i) #oversample
-        Ytrain = train_oversample.iloc[:,0]
-        Xtrain = train_oversample.iloc[:,1]
-
+        if oversample1:
+            train_oversample = oversample(Xtrain, Ytrain, i) #oversample
+            Ytrain = train_oversample.iloc[:,0]
+            Xtrain = train_oversample.iloc[:,1]
         clf = LinearSVC(class_weight='balanced')
         vect = CountVectorizer(max_features=50000)
         text_clf = Pipeline([('vect', vect),
@@ -230,12 +228,12 @@ elif features == 'both':
     vectorizer = TfidfVectorizer(min_df=1, stop_words="english", max_features=50000)
     Xtrain_tfidf = vectorizer.fit_transform(Xtrain_texts).toarray()
     Xvalidation_tfidf = vectorizer.fit_transform(Xvalidation_texts).toarray()
-    print Xtrain_tfidf.shape
-    print Xvalidation_tfidf.shape
+    print(Xtrain_tfidf.shape)
+    print(Xvalidation_tfidf.shape)
 
     # liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
     for i in labels:
-        print 'classification report'
+        print('classification report')
 
 
 

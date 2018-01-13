@@ -48,26 +48,25 @@ sys.path.append(path)
 
 # Partial label
 df = split_types.new_df  # partial label (e.g., I)
-
-
-df = df.sample(frac=1, random_state=123) # randomizes whole dataframe
+df = df.sample(frac=1, random_state=123) # CAREFUL! This is not working.
 
 #Save it in order to skip loading time
 # df.to_csv(config.path+'df.csv')
-
-# X = df['posts'].tolist()
 
 # Clean data
 ##============================================================
 data_cleaner = data_cleaner.data_cleaner()
 
+# X = df['posts'].tolist()
+# print('preprocessing corpus...')
 # X1 = data_cleaner.preprocess1(X)
+# print('Done preprocessing')
 # np.save(config.path+'X1',X1)
-
+X1 = np.load(config.path+'X2.npy').tolist()
 
 # Load pre-cleaned data, and split it
 ##============================================================
-X1 = np.load(config.path+'X1.npy').tolist()
+
 
 split_point = int(0.7 * len(X1))
 Xtrain = X1[:split_point]
@@ -161,10 +160,6 @@ for i in labels:
     Ytrain = transfomed_label[:split_point]  # Should be: array([1, 0, 0, ..., 0, 1, 0])
     Yvalidation = transfomed_label[split_point:(split_point + 1301)]
     Ytest = transfomed_label[(split_point + 1301):-1]
-    # if oversample:
-    #     train_oversample = oversample(Xtrain, Ytrain, i) #oversample
-    #     Ytrain = train_oversample.iloc[:,0]
-    #     Xtrain = train_oversample.iloc[:,1]
     model.fit(Xtrain_enc, Ytrain, epochs=3, batch_size=128)  # A large batch size of 64 reviews is used to space out weight updates.
     # Final evaluation of the model
     scores = model.evaluate(Xvalidation_enc, Yvalidation, verbose=0)
