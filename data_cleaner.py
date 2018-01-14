@@ -18,7 +18,7 @@ class data_cleaner():
             X1.append(' '.join(tokens))
         return X1
 
-    def preprocess2(self, listOfLists):
+    def preprocess2(self, listOfLists): #CRASHES!
         # removing URLs
         X1 = []
         for i in listOfLists:
