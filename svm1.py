@@ -4,7 +4,7 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.metrics import f1_score
 import sys
 import config #python script in directory
@@ -13,8 +13,15 @@ import data_cleaner
 from sklearn.utils import resample
 from sklearn.feature_extraction.text import TfidfVectorizer
 import cm_clas_report #python script in directory
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_predict
+from sklearn.multiclass import OneVsRestClassifier
+import load_data2
+
+from sklearn.model_selection import train_test_split
 import importlib
-# importlib.reload(config)
+importlib.reload(load_data2)
 path = config.corpus
 sys.path.append(path)
 
@@ -23,7 +30,9 @@ print_report_for_latex = False
 print_report = True
 oversample1 = False #worsens performance
 features = 'tfidf' ## Select the type of features: tfidf, liwc, both
-full_or_partial_label = True # True = full, False = Partial
+full_or_partial_label = load_data2.full_or_partial_label # True = full, False = Partial
+cv_gridsearch = False
+
 
 def normalize(df):
     df['WC'] = pd.to_numeric(df['WC']).astype(float)
@@ -60,47 +69,6 @@ def oversample(Xtrain, Ytrain, label):
     return df_upsampled
 
 
-# Choose df
-##======================================================================
-#Load data
-if full_or_partial_label:
-    # FULL label
-    df = pd.read_csv(path) #full label (e.g., INTP)
-    df = df.sample(frac=1, random_state=123)  # should randomize whole dataframe)
-    Y = df['type'].tolist()
-else:
-    # Partial label
-    df = split_types.new_df  # partial label (e.g., I)
-    df = df.sample(frac=1, random_state=123) # should randomize whole dataframe)
-
-# Clean data
-##============================================================
-# data_cleaner = data_cleaner.data_cleaner()
-
-## First time you run:
-# X = df['posts'].tolist()
-# print('preprocessing corpus...')
-# X1 = data_cleaner.preprocess1(X)
-# print('Done preprocessing')
-# np.savez_compressed(config.path+'X2',a=X1)
-
-# After or load Xtrain, Xvalidation and Xtest below:
-X1 = np.load(config.path+'X2.npz')['a'].tolist()
-
-# split 0.7, 0.15, 0.15
-##============================================================
-split_point = int(0.7 * len(X1))
-
-# Xtrain = X1[:split_point]
-# Xvalidation = X1[split_point:(split_point + 1301)]
-# Xtest = X1[(split_point + 1301):-1]
-
-# np.savez_compressed(config.path+'split_train_valid_test', a=Xtrain, b=Xvalidation,c=Xtest)
-loaded = np.load(config.path+'split_train_valid_test.npz')
-Xtrain = loaded['a']
-Xvalidation = loaded['b']
-Xtest = loaded['c']
-
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
 # sets = [Xtrain,Xvalidation,Xtest]
@@ -113,16 +81,101 @@ Xtest = loaded['c']
 #             text_file.write(sets[i][text])
 
 
+## Load dataset
+# =====================================================================================
+
+df = load_data2.df
+
+X1 = load_data2.X1
+Xtrain = load_data2.Xtrain
+Xtest = load_data2.Xtest
+
+if full_or_partial_label:
+    Ytrain = load_data2.Ytrain
+    Ytest = load_data2.Ytest
+
 # run
 # ========================================================================
-
 labels = df.columns[:-1]
-'''liwc features'''
-liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
-liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
-liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
-liwc_validation_normalized = normalize(liwc_validation.iloc[:, 2:])
+
+if features == 'tfidf':
+    '''TFIDF features'''
+    d = {}
+    labels = df.columns[:-1]
+    if full_or_partial_label: # 1 in 16 classification
+        # if oversample1:
+            # oversample minority classes to match majority class
+            # TODO: only works with 4 binary classification
+            # train_oversample = oversample(Xtrain, Ytrain, i)  # oversample
+            # Ytrain = train_oversample.iloc[:, 0]
+            # Xtrain = train_oversample.iloc[:, 1]
+        if cv_gridsearch:
+            vect = CountVectorizer()
+            SVM = LinearSVC()
+            pipeline = Pipeline([('vect', vect),
+                                 ('tfidf', TfidfTransformer()),
+                                 ('clf', SVM), ])
+            parameters = {'clf__C': [0.001, 0.01, 0.1, 1, 10],
+                          'clf__class_weight': [None,'balanced'],
+                          'vect__max_features': [10000,50000,100000]
+                          }
+            clf = GridSearchCV(pipeline, parameters, cv=6, scoring='f1_weighted', refit=False, verbose=1)
+            clf = clf.fit(Xtrain, Ytrain)
+            scores = clf.cv_results_['mean_test_score']
+            print(np.mean(scores))
+            print(clf.best_score_)
+            best_params = clf.best_params_
+            print(best_params)
+        else:
+            # NO Crossvalidation, no gridsearch, use for final evaluation on test set.
+            clf = LinearSVC(class_weight='balanced')
+            vect = CountVectorizer(max_features=100000)
+            text_clf = Pipeline([('vect', vect),
+                                 ('tfidf', TfidfTransformer()),
+                                 ('clf', clf), ])
+            # text_clf.fit(Xtrain, Ytrain)
+            scores = cross_val_score(text_clf, Xtrain, Ytrain, cv=6, scoring='f1_weighted')
+            Yguess = text_clf.predict(Ytest)
+            acc = np.mean(Yguess == Ytest)
+            f1 = f1_score(Ytest, Yguess, average='weighted')
+            # print(np.round(f1*100,2))
+            report = classification_report(Ytest, Yguess)
+           # print(report)
+    else:
+        '4 binary classification'
+        for i in labels:
+            Y = df[i].tolist()
+            Ytrain = Y[:split_point]
+            Yvalidation = Y[split_point:(split_point+1301)]
+            Ytest = Y[(split_point+1301):-1]
+            if oversample1:
+                train_oversample = oversample(Xtrain, Ytrain, i) #oversample
+                Ytrain = train_oversample.iloc[:,0]
+                Xtrain = train_oversample.iloc[:,1]
+            clf = LinearSVC(class_weight='balanced',C=10.0)
+            # clf = SVC(C=10.0, kernel='linear',gamma=0.01)
+            vect = CountVectorizer(max_features=50000)
+            text_clf = Pipeline([('vect', vect),
+                                 ('tfidf', TfidfTransformer()),
+                                 ('clf', clf),])
+
+
+            text_clf.fit(Xtrain, Ytrain)
+            Yguess = text_clf.predict(Xvalidation)
+            acc = np.mean(Yguess == Yvalidation)
+            f1 = f1_score(Yvalidation, Yguess, average='weighted')
+            print(np.round(f1 * 100, 2))
+            report = classification_report(Yvalidation, Yguess)
+            print(report)
+            d[i]=round(f1, 4) * 100
+
 if features == 'liwc':
+    '''liwc features'''
+    # TODO: crossvalidation
+    liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
+    liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
+    liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
+    liwc_validation_normalized = normalize(liwc_validation.iloc[:, 2:])
     Xtrain1 = np.array(liwc_train_normalized)
     Xvalidation1 = np.array(liwc_validation_normalized)
     d = {}
@@ -138,68 +191,12 @@ if features == 'liwc':
         report = classification_report(Yvalidation, Yguess)
         print(report)
         d[i]=round(f1, 4) * 100
-elif features == 'tfidf':
-    '''TFIDF features'''
-    d = {}
-    labels = df.columns[:-1]
-    if full_or_partial_label:
-        '''
-        1 in 16 classification
-        or 
-        4 binary classifications
-        '''
-        Ytrain = Y[:split_point]
-        Yvalidation = Y[split_point:(split_point + 1301)]
-        Ytest = Y[(split_point + 1301):-1]
-        if oversample1:
-            '''
-            oversample minority classes to match majority class
-            '''
-            train_oversample = oversample(Xtrain, Ytrain, i)  # oversample
-            Ytrain = train_oversample.iloc[:, 0]
-            Xtrain = train_oversample.iloc[:, 1]
-        clf = LinearSVC(class_weight='balanced')
-        vect = CountVectorizer(max_features=50000)
-        text_clf = Pipeline([('vect', vect),
-                             ('tfidf', TfidfTransformer()),
-                             ('clf', clf), ])
 
-        text_clf.fit(Xtrain, Ytrain)
-        Yguess = text_clf.predict(Xvalidation)
-        acc = np.mean(Yguess == Yvalidation)
-        f1 = f1_score(Yvalidation, Yguess, average='weighted')
-        print(np.round(f1*100,2))
-        report = classification_report(Yvalidation, Yguess)
-        print(report)
-    else:
-        ''
-        for i in labels:
-            Y = df[i].tolist()
-            Ytrain = Y[:split_point]
-            Yvalidation = Y[split_point:(split_point+1301)]
-            Ytest = Y[(split_point+1301):-1]
-            if oversample1:
-                train_oversample = oversample(Xtrain, Ytrain, i) #oversample
-                Ytrain = train_oversample.iloc[:,0]
-                Xtrain = train_oversample.iloc[:,1]
-            clf = LinearSVC(class_weight='balanced')
-            vect = CountVectorizer(max_features=50000)
-            text_clf = Pipeline([('vect', vect),
-                                 ('tfidf', TfidfTransformer()),
-                                 ('clf', clf),])
-
-
-            text_clf.fit(Xtrain, Ytrain)
-            Yguess = text_clf.predict(Xvalidation)
-            acc = np.mean(Yguess == Yvalidation)
-            f1 = f1_score(Yvalidation, Yguess, average='weighted')
-            report = classification_report(Yvalidation, Yguess)
-            print(report)
-            d[i]=round(f1, 4) * 100
-elif features == 'both':
+if features == 'both':
     '''
     concatenate LIWC and TFIDF
     '''
+    # TODO: crossvalidation
     Xtrain_liwc = np.array(liwc_train_normalized)
     Xvalidation_liwc = np.array(liwc_validation_normalized)
 
