@@ -68,19 +68,6 @@ def oversample(Xtrain, Ytrain, label):
     df_upsampled = pd.concat([df_majority, df_minority_upsampled])
     return df_upsampled
 
-
-# # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
-##============================================================
-# sets = [Xtrain,Xvalidation,Xtest]
-# sets1 = ['train','validation','test']
-
-
-# for i in range(3):
-#     for text in range(len(sets[i])):
-#         with open(config.path+sets1[i]+'/'+str(text).zfill(4)+".txt", "w") as text_file:
-#             text_file.write(sets[i][text])
-
-
 ## Load dataset
 # =====================================================================================
 
@@ -93,6 +80,21 @@ Xtest = load_data.Xtest
 if full_or_partial_label:
     Ytrain = load_data.Ytrain
     Ytest = load_data.Ytest
+
+# # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
+##============================================================
+# sets = [Xtrain,Xtest]
+# sets1 = ['train','test']
+#
+# for i in range(len(sets1)):
+#     for text in range(len(sets[i])):
+#         with open(config.path+sets1[i]+'/'+str(text).zfill(4)+".txt", "w") as text_file:
+#             text_file.write(sets[i][text])
+
+'''
+Then you have to feed these txts to LIWC software, which outputs liwc_train.csv 
+'''
+
 
 # run
 # ========================================================================
@@ -173,7 +175,7 @@ if features == 'liwc':
     '''liwc features'''
     # TODO: crossvalidation
     liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
-    liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
+    # liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
     liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
     liwc_validation_normalized = normalize(liwc_validation.iloc[:, 2:])
     Xtrain1 = np.array(liwc_train_normalized)
