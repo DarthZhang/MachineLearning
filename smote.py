@@ -6,32 +6,45 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import LinearSVC, SVC
 from sklearn.metrics import f1_score
 from  sklearn import metrics
+import pandas
+from sklearn.preprocessing import Normalizer
+from sklearn.decomposition import TruncatedSVD
+
 
 #Load data
 df = load_data.df
 X = load_data.X1
 
+
 d = {}
 labels = df.columns[:-1]
 for i in labels:
     Y = df[i]
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.3, random_state=42)
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, train_size=0.8, random_state=42)
 
     ##============================================================
 
     print('Original dataset shape {}'.format(Counter(Y_train)))
     sm = SMOTE(random_state=42)
-    vectorizer = CountVectorizer(min_df=1, max_features=50000)
+    vectorizer = CountVectorizer(min_df=1, max_features=5000)
     X_train = vectorizer.fit_transform(X_train)
+
+    #lsa = TruncatedSVD(50)
+    #X_train = lsa.fit_transform(X_train)
+    #X_train = Normalizer(copy=False).fit_transform(X_train)
+
     Xtrain, Ytrain = sm.fit_sample(X_train, Y_train)
     print('Resampled dataset shape {}'.format(Counter(Ytrain)))
 
     ##============================================================
 
-    clf = LinearSVC(class_weight='balanced')
+    clf = SVC(class_weight='balanced')
 
     clf.fit(Xtrain, Ytrain)
     Xvalidation = vectorizer.fit_transform(X_test)
+    #Xvalidation = lsa.fit_transform(Xvalidation)
+    #Xvalidation = Normalizer(copy=False).fit_transform(Xvalidation)
+
     Y_predicted = clf.predict(Xvalidation)
 
     output_classification_report = metrics.classification_report(

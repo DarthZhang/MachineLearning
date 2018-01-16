@@ -1,38 +1,45 @@
 from nltk.tokenize.casual import TweetTokenizer
+import string
+import itertools
+
+punctuation = string.punctuation+'``'+'--'+"''"+'|'+'...'
 tokenizer = TweetTokenizer(preserve_case=False, reduce_len=True, strip_handles=True)
+translator = str.maketrans('', '', string.punctuation)
+
 
 class data_cleaner():
 
-    def clean(self, sentence):
-        if sentence.startswith('http'):
-            return ""
+    def flatten(x):
+        if isinstance(x, list):
+            return [a for i in x for a in data_cleaner.flatten(i)]
         else:
-            return sentence
+            return [x]
 
     def preprocess1(self, listOfLists):
         # not removing URLs
         X1 = []
-        for i in listOfLists:
-            i = i.replace('|||', ' ')
-            tokens = tokenizer.tokenize(i)
-            X1.append(' '.join(tokens))
+        i =0
+        for sentence in listOfLists:
+            list = sentence.split()
+            sublist = []
+            for word in list:
+                if word.startswith('http'):
+                    continue
+                if '|||' in word:
+                    word.replace('.','')
+                    tuples = word.split('|||')
+                    for tuple in tuples:
+                        token1 = tokenizer.tokenize(tuple)
+                        sublist.append(token1)
+                elif '.' in word:
+                    word.replace('.', '')
+                    token = tokenizer.tokenize(word.translate(translator))
+                    sublist.append(token)
+                else:
+                    token = tokenizer.tokenize(word.translate(translator))
+                    sublist.append(token)
+            output = [item for item in data_cleaner.flatten(sublist) if item not in punctuation ]
+            X1.append(' '.join(output))
+            print(i)
+            i +=1
         return X1
-
-    def preprocess2(self, listOfLists): #CRASHES!
-        # removing URLs
-        X1 = []
-        for i in listOfLists:
-            i = i.replace('|||', ' ')
-            tmp_tokens = []
-            tokens = tokenizer.tokenize(i)
-            for j in tokens:
-                tmp = self.clean(j)
-                tmp_tokens.append(tmp)
-                X1.append(' '.join(tmp_tokens).replace('  ', ' '))
-        return X1
-
-#data = data_cleaner()
-#a = ["my first post as a travel blogger in ohlala magazine!! It is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for them from sweden! great way to close the year. if you read some spanish check it out, if not you can use facebook translate! more in my travel instagram. my first post as a travel blogger in ohlala magazine! it is one of the biggest - if not the biggest and most read magazine by women in argentina, cannot believe i am collaborating for"]
-
-#a = data.preprocess1(a)
-#print(a)
