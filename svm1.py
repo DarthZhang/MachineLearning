@@ -17,11 +17,11 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import cross_val_predict
 from sklearn.multiclass import OneVsRestClassifier
-import load_data2
+import load_data
 
 from sklearn.model_selection import train_test_split
 import importlib
-importlib.reload(load_data2)
+importlib.reload(load_data)
 path = config.corpus
 sys.path.append(path)
 
@@ -30,7 +30,7 @@ print_report_for_latex = False
 print_report = True
 oversample1 = False #worsens performance
 features = 'tfidf' ## Select the type of features: tfidf, liwc, both
-full_or_partial_label = load_data2.full_or_partial_label # True = full, False = Partial
+full_or_partial_label = load_data.full_or_partial_label # True = full, False = Partial
 cv_gridsearch = False
 
 
@@ -84,15 +84,15 @@ def oversample(Xtrain, Ytrain, label):
 ## Load dataset
 # =====================================================================================
 
-df = load_data2.df
+df = load_data.df
 
-X1 = load_data2.X1
-Xtrain = load_data2.Xtrain
-Xtest = load_data2.Xtest
+X1 = load_data.X1
+Xtrain = load_data.Xtrain
+Xtest = load_data.Xtest
 
 if full_or_partial_label:
-    Ytrain = load_data2.Ytrain
-    Ytest = load_data2.Ytest
+    Ytrain = load_data.Ytrain
+    Ytest = load_data.Ytest
 
 # run
 # ========================================================================
