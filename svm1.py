@@ -81,6 +81,14 @@ if full_or_partial_label:
     Ytrain = load_data.Ytrain
     Ytest = load_data.Ytest
 
+print (Ytrain.shape)
+print (Ytest.shape)
+
+# split 0.7, 0.15, 0.15
+# Not using this anymore, this is temporary so the code doesn't have errors
+##============================================================
+split_point = int(0.7 * len(X1))
+
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
 # sets = [Xtrain,Xtest]
@@ -135,16 +143,18 @@ if features == 'tfidf':
             text_clf = Pipeline([('vect', vect),
                                  ('tfidf', TfidfTransformer()),
                                  ('clf', clf), ])
-            # text_clf.fit(Xtrain, Ytrain)
+            text_clf.fit(Xtrain, Ytrain)
             scores = cross_val_score(text_clf, Xtrain, Ytrain, cv=6, scoring='f1_weighted')
             Yguess = text_clf.predict(Ytest)
             acc = np.mean(Yguess == Ytest)
             f1 = f1_score(Ytest, Yguess, average='weighted')
             # print(np.round(f1*100,2))
             report = classification_report(Ytest, Yguess)
-           # print(report)
+            print(report)
     else:
         '4 binary classification'
+        # this line will be removed, added because of errors
+        Xvalidation = X1[split_point:(split_point + 1301)]
         for i in labels:
             Y = df[i].tolist()
             Ytrain = Y[:split_point]
@@ -173,6 +183,8 @@ if features == 'tfidf':
 
 if features == 'liwc':
     '''liwc features'''
+    # this line will be removed, added because of errors
+    liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
     # TODO: crossvalidation
     liwc_train = pd.read_csv(config.path + 'liwc_train.csv')
     # liwc_validation = pd.read_csv(config.path + 'liwc_validation.csv')
