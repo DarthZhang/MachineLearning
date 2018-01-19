@@ -8,6 +8,7 @@ from keras.layers import LSTM
 from keras.layers import Dropout
 from keras.layers.embeddings import Embedding
 from keras.preprocessing import sequence
+from sklearn.utils import resample
 # fix random seed for reproducibility
 np.random.seed(7)
 
