@@ -1,4 +1,6 @@
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 import config
 import load_data
 
@@ -50,7 +52,7 @@ print(feature_means)
 # type = letter of personality e.g. I, N, etc.
 # position = position of the letter inside the label i.e. 0, 1, 2, 3
 def mean_feature_type(feature, type, position):
-    if position < 0 or position>3:
+    if position < 0 or position > 3:
         print('Position must be between 0 and 3')
         exit(0)
 
@@ -74,8 +76,26 @@ for i in features:
     for j in personalities:
         denominator = feature_means[i_numeral]
         nominator = mean_feature_type(i, j, j_numeral//2)
-        df_final.loc[i,j] = nominator/denominator
+        df_final.loc[i, j] = nominator/denominator
         j_numeral = j_numeral + 1
     i_numeral = i_numeral + 1
 
-print(df_final)
+# print(df_final)
+
+
+# Plot heatmap
+plt.figure(0)
+sns.heatmap(df_final)
+plt.show()
+
+plt.figure(1)
+sns.heatmap(df_final.iloc[0:30])
+plt.show()
+
+plt.figure(2)
+sns.heatmap(df_final[30:60])
+plt.show()
+
+plt.figure(3)
+sns.heatmap(df_final[60:93])
+plt.show()
