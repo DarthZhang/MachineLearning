@@ -1,3 +1,10 @@
 .idea
 separated_types.csv
 config.pyc
+venv/
+venv2/
+venv3/
+__pycache__/
+data_cleaner.pyc
+split_types.pyc
+tmp.csv

@@ -1,30 +1,24 @@
 import numpy as np
 import pandas as pd
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.svm import LinearSVC, SVC
 from sklearn.metrics import f1_score
 import sys
 import config #python script in directory
-import split_types #python script in directory
-import data_cleaner
 from sklearn.utils import resample
-from sklearn.feature_extraction.text import TfidfVectorizer
-import cm_clas_report #python script in directory
 from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import cross_val_predict
-from sklearn.multiclass import OneVsRestClassifier
 import load_data
-
-from sklearn.model_selection import train_test_split
+import cm_clas_report
+import matplotlib.pyplot as plt
+from sklearn import preprocessing
 import importlib
 importlib.reload(load_data)
-path = config.corpus
+path = config.path
 sys.path.append(path)
 
+# Choose script parameters
 plot_conf_matrix = False
 print_report_for_latex = False
 print_report = True
@@ -32,7 +26,6 @@ oversample1 = False #worsens performance
 features = 'tfidf' ## Select the type of features: tfidf, liwc, both
 full_or_partial_label = load_data.full_or_partial_label # True = full, False = Partial
 cv_gridsearch = False
-
 
 def normalize(df):
     df['WC'] = pd.to_numeric(df['WC']).astype(float)
@@ -58,6 +51,7 @@ def oversample(Xtrain, Ytrain, label):
     elif label == 'type_4':
         df_majority = df[df.iloc[:, 0] == 'P']
         df_minority = df[df.iloc[:, 0] == 'J']
+    # TODO: do for single label
     # Upsample minority class
     df_minority_upsampled = resample(df_minority,
                                      replace=True,  # sample with replacement
@@ -81,13 +75,21 @@ if full_or_partial_label:
     Ytrain = load_data.Ytrain
     Ytest = load_data.Ytest
 
-print (Ytrain.shape)
-print (Ytest.shape)
+print (Xtrain.shape)
+print (Xtest.shape)
+#Encode strings to integers
+# le = preprocessing.LabelEncoder()
+# le.fit(Ytrain)
+# Ytrain = le.transform(Ytrain)
+# le = preprocessing.LabelEncoder()
+# le.fit(Ytest)
+# Ytest = le.transform(Ytest)
+
 
 # split 0.7, 0.15, 0.15
 # Not using this anymore, this is temporary so the code doesn't have errors
 ##============================================================
-split_point = int(0.7 * len(X1))
+split_point = int(0.8 * len(X1))
 
 # # Create txt files (1 per subject) with posts in 3 folders (train, validation, test), then feed to LIWC
 ##============================================================
@@ -107,6 +109,7 @@ Then you have to feed these txts to LIWC software, which outputs liwc_train.csv
 # run
 # ========================================================================
 labels = df.columns[:-1]
+types = set(df['type'])
 
 if features == 'tfidf':
     '''TFIDF features'''
@@ -131,26 +134,36 @@ if features == 'tfidf':
                           }
             clf = GridSearchCV(pipeline, parameters, cv=6, scoring='f1_weighted', refit=False, verbose=1)
             clf = clf.fit(Xtrain, Ytrain)
+
             scores = clf.cv_results_['mean_test_score']
             print(np.mean(scores))
             print(clf.best_score_)
             best_params = clf.best_params_
             print(best_params)
         else:
-            # NO Crossvalidation, no gridsearch, use for final evaluation on test set.
-            clf = LinearSVC(class_weight='balanced')
-            vect = CountVectorizer(max_features=100000)
+            # no cross validation, no gridsearch, use for final evaluation on test set.
+            clf = SVC(C=10.0, gamma=0.1, kernel='rbf')
+            vect = CountVectorizer()
             text_clf = Pipeline([('vect', vect),
                                  ('tfidf', TfidfTransformer()),
                                  ('clf', clf), ])
+            print('fitting SVM...')
             text_clf.fit(Xtrain, Ytrain)
-            scores = cross_val_score(text_clf, Xtrain, Ytrain, cv=6, scoring='f1_weighted')
-            Yguess = text_clf.predict(Ytest)
-            acc = np.mean(Yguess == Ytest)
+            print('predicting test set...')
+            Yguess = text_clf.predict(Xtest)
             f1 = f1_score(Ytest, Yguess, average='weighted')
-            # print(np.round(f1*100,2))
+            print('f1: ', str(np.round(f1 * 100, 2)))
             report = classification_report(Ytest, Yguess)
+            print('Classification report and confusion matrix:\n')
             print(report)
+            df_latex = cm_clas_report.classification_report_df(report)
+            print('Classification report for latex:\n')
+            print(df_latex)
+            print('Confusion matrix: ')
+            cm = confusion_matrix(Ytest, Yguess)
+            cm_plot = cm_clas_report.plot_confusion_matrix(cm, classes=types, normalize=False)
+            plt.savefig(path+'cm_svm_testset')
+            plt.show()
     else:
         '4 binary classification'
         # this line will be removed, added because of errors
@@ -181,6 +194,8 @@ if features == 'tfidf':
             print(report)
             d[i]=round(f1, 4) * 100
 
+
+# for liwc features
 if features == 'liwc':
     '''liwc features'''
     # this line will be removed, added because of errors
@@ -206,24 +221,24 @@ if features == 'liwc':
         print(report)
         d[i]=round(f1, 4) * 100
 
-if features == 'both':
-    '''
-    concatenate LIWC and TFIDF
-    '''
-    # TODO: crossvalidation
-    Xtrain_liwc = np.array(liwc_train_normalized)
-    Xvalidation_liwc = np.array(liwc_validation_normalized)
-
-    Xtrain_texts = X1[:split_point]
-    Xvalidation_texts = X1[split_point:(split_point+1301)]
-    vectorizer = TfidfVectorizer(min_df=1, stop_words="english", max_features=50000)
-    Xtrain_tfidf = vectorizer.fit_transform(Xtrain_texts).toarray()
-    Xvalidation_tfidf = vectorizer.fit_transform(Xvalidation_texts).toarray()
-    print(Xtrain_tfidf.shape)
-    print(Xvalidation_tfidf.shape)
-    # liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
-    for i in labels:
-        print('classification report')
+# if features == 'both':
+#     '''
+#     concatenate LIWC and TFIDF
+#     '''
+#     # TODO: crossvalidation
+#     Xtrain_liwc = np.array(liwc_train_normalized)
+#     Xvalidation_liwc = np.array(liwc_validation_normalized)
+#
+#     Xtrain_texts = X1[:split_point]
+#     Xvalidation_texts = X1[split_point:(split_point+1301)]
+#     vectorizer = TfidfVectorizer(min_df=1, stop_words="english", max_features=50000)
+#     Xtrain_tfidf = vectorizer.fit_transform(Xtrain_texts).toarray()
+#     Xvalidation_tfidf = vectorizer.fit_transform(Xvalidation_texts).toarray()
+#     print(Xtrain_tfidf.shape)
+#     print(Xvalidation_tfidf.shape)
+#     # liwc_train_normalized = normalize(liwc_train.iloc[:, 2:])
+#     for i in labels:
+#         print('classification report')
 
 # summarize results for all 4 models
 if not full_or_partial_label:
@@ -259,123 +274,3 @@ if not full_or_partial_label:
 #     Yguess = text_clf.predict(a)
 #     print("Example Gueess:")
 #     print(Yguess)
-
-
-# Test a single model and method
-##============================================================================================
-# model = 'linearSVC'
-# vectorizer = 'unigram'
-#
-#
-# if model == 'SVM':
-#     clf = SVC(kernel='linear', C = 1.0)
-# elif model == 'linearSVC':
-#     clf = LinearSVC()
-# elif model == 'NB':
-#     clf = MultinomialNB()
-#
-# if vectorizer == 'ngrams':
-#     vect = CountVectorizer(ngram_range=(1, 3), max_features=100000)
-# elif vectorizer == 'lemmatizer':
-#     lemmatizer = WordNetLemmatizer()
-#     def lemmatized_words(doc):
-#         return (lemmatizer.lemmatize(w) for w in analyzer(doc))
-#     analyzer = CountVectorizer().build_analyzer()
-#     vect = CountVectorizer(analyzer=lemmatized_words)
-# elif vectorizer == 'unigram':
-#     vect = CountVectorizer(max_features=50000)
-#
-#
-# text_clf = Pipeline([('vect', vect),
-#                      ('tfidf', TfidfTransformer()),
-#                      ('clf', clf),])
-#
-# text_clf.fit(Xtrain, Ytrain)
-# Yguess = text_clf.predict(Xvalidation)
-# acc = np.mean(Yguess == Yvalidation)
-# f1 = f1_score(Yvalidation, Yguess, average='weighted')
-# print(round(f1,4)*100)
-#
-# # Classification report
-# # class_names = ['books', 'camera', 'dvd', 'health', 'music', 'software']
-#
-# if print_report:
-#     report = classification_report(Yvalidation, Yguess)
-#     print(report)
-#
-# if print_report_for_latex:
-#     df = cm_class_report.classification_report_df(report)
-#     print(df)
-#
-# # Confusion Matrix
-# if plot_conf_matrix == True:
-#     cm = confusion_matrix(Ytest, Yguess) # Compute confusion matrix
-#     plt.figure() # plot confusion matrix
-#     cm_class_report.plot_confusion_matrix(cm, np.array(class_names), normalize=True)
-#     plt.tight_layout()
-#     # plt.show()
-#     # plt.savefig(outpath+'cm_'+model+'_'+vectorizer+'.eps',format='eps', dpi=100)
-#
-
-
-#For summary of results between models and methods:
-#============================================================================================
-# print('Computing NB and SVM in all different ways...')
-#
-# d3 = {}
-#
-# model
-# vectorizer = []
-#
-# for i in range(6):
-#     if i == 0:
-#         model = 'NB'
-#         vectorizer = 'unigram'
-#     elif i == 1:
-#         model = 'NB'
-#         vectorizer = 'ngrams'
-#     elif i == 2:
-#         model = 'NB'
-#         vectorizer = 'lemmatizer'
-#     elif i == 3:
-#         model = 'SVM'
-#         vectorizer = 'unigram'
-#     elif i == 4:
-#         model = 'SVM'
-#         vectorizer = 'ngrams'
-#     elif i == 5:
-#         model = 'SVM'
-#         vectorizer = 'lemmatizer'
-#     if model == 'SVM':
-#         clf = LinearSVC()
-#     elif model == 'NB':
-#         clf = MultinomialNB()
-#     if vectorizer == 'ngrams':
-#         vect = CountVectorizer(ngram_range=(1, 3), max_features=100000)
-#     elif vectorizer == 'lemmatizer':
-#         lemmatizer = WordNetLemmatizer()
-#         def lemmatized_words(doc):
-#             return (lemmatizer.lemmatize(w) for w in analyzer(doc))
-#         analyzer = CountVectorizer().build_analyzer()
-#         vect = CountVectorizer(analyzer=lemmatized_words)
-#     elif vectorizer == 'unigram':
-#         vect = CountVectorizer(max_features=50000)
-#
-#     text_clf = Pipeline([('vect', vect),
-#                          ('tfidf', TfidfTransformer()),
-#                          ('clf', clf), ])
-#
-#
-#     text_clf.fit(Xtrain, Ytrain)
-#     Yguess = text_clf.predict(Xtest)
-#     acc = np.mean(Yguess == Ytest)
-#     f1 = f1_score(Ytest, Yguess, average='weighted')*100
-#     d3[model+' '+vectorizer] = round(f1,2)
-#     print(f1)
-#
-# data = pd.DataFrame(columns=d3.keys())
-# data = data.append(pd.DataFrame(d3, index=[0]), ignore_index=True)
-# data = data.transpose()
-# data.columns =['model']
-# print(data)
-
