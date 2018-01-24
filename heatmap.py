@@ -123,19 +123,19 @@ for i in features:
 
 plt.figure(0)
 current_palette = sns.color_palette()
-palette = sns.color_palette("RdBu_r", 7)
-sns.heatmap(df_final_mean, cmap=palette)
+palette = sns.color_palette("RdBu_r", 5)
+sns.heatmap(df_final_mean, cmap=palette, center=1)
 plt.show()
 
 plt.figure(1)
 current_palette = sns.color_palette()
-palette = sns.color_palette("RdBu_r", 7)
-sns.heatmap(df_final_difference, cmap=palette)
+palette = sns.color_palette("RdBu_r", 5)
+sns.heatmap(df_final_difference, cmap=palette, center=0)
 plt.show()
 
 plt.figure(2)
 current_palette = sns.color_palette()
-palette = sns.color_palette("RdBu_r", 7)
-sns.heatmap(df_final_ratios, cmap=palette)
+palette = sns.color_palette("RdBu_r", 5)
+sns.heatmap(df_final_ratios, cmap=palette, center=1)
 plt.show()
 
