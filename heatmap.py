@@ -121,21 +121,27 @@ for i in features:
         j_numeral = j_numeral + 1
     i_numeral = i_numeral + 1
 
-plt.figure(0)
+# plt.figure(0)
+# current_palette = sns.color_palette()
+# palette = sns.color_palette("RdBu_r", 5)
+# sns.heatmap(df_final_mean, cmap=palette, center=1)
+# plt.show()
+#
+# plt.figure(1)
+# current_palette = sns.color_palette()
+# palette = sns.color_palette("RdBu_r", 5)
+# sns.heatmap(df_final_difference, cmap=palette, center=0)
+# plt.show()
+
+plt.figure(2, figsize=(7,8.5))
 current_palette = sns.color_palette()
 palette = sns.color_palette("RdBu_r", 5)
-sns.heatmap(df_final_mean, cmap=palette, center=1)
+sns.set(font_scale=0.7)
+sns.heatmap(df_final_ratios, cmap=palette, center=1, yticklabels=True)
+# plt.ylabel('Semantic-Linguistic Features')
+# plt.title('Language Patterns in different Personalities')
+plt.savefig(config.path+'heatmap_full.png')
 plt.show()
 
-plt.figure(1)
-current_palette = sns.color_palette()
-palette = sns.color_palette("RdBu_r", 5)
-sns.heatmap(df_final_difference, cmap=palette, center=0)
-plt.show()
-
-plt.figure(2)
-current_palette = sns.color_palette()
-palette = sns.color_palette("RdBu_r", 5)
-sns.heatmap(df_final_ratios, cmap=palette, center=1)
-plt.show()
+df_final_ratios.to_csv('tmp.csv')
 
