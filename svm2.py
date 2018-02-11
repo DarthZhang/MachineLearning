@@ -6,7 +6,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.svm import LinearSVC, SVC
 from sklearn.metrics import f1_score
 import sys
-import config #python script in directory
+import config
 from sklearn.utils import resample
 from sklearn.model_selection import GridSearchCV
 import load_data
@@ -18,11 +18,15 @@ importlib.reload(load_data)
 path = config.path
 sys.path.append(path)
 
+# List of all labels
+full_labels_list=['ISTJ', 'ISTP', 'ISFJ', 'ISFP', 'INTJ', 'INTP', 'INFJ', 'INFP',
+                  'ESTJ', 'ESTP', 'ESFJ', 'ESFP', 'ENTJ', 'ENTP', 'ENFJ', 'ENFP']
+
 # Choose script parameters
 plot_conf_matrix = False
 print_report_for_latex = False
 print_report = True
-oversample1 = False #worsens performance
+oversample_flag = True #worsens performance
 features = 'tfidf' ## Select the type of features: tfidf, liwc, both
 full_or_partial_label = load_data.full_or_partial_label # True = full, False = Partial
 cv_gridsearch = False
@@ -32,6 +36,7 @@ def normalize(df):
     df.convert_objects(convert_numeric=True)
     df_norm = (df - df.mean()) / (df.max() - df.min())
     return df_norm
+
 
 def oversample(Xtrain, Ytrain, label):
     # Separate majority and minority classes
@@ -51,8 +56,9 @@ def oversample(Xtrain, Ytrain, label):
     elif label == 'type_4':
         df_majority = df[df.iloc[:, 0] == 'P']
         df_minority = df[df.iloc[:, 0] == 'J']
-    # TODO: do for single label
-    # Upsample minority class
+    else:
+        print('No valid label given')
+        exit(0)
     df_minority_upsampled = resample(df_minority,
                                      replace=True,  # sample with replacement
                                      n_samples=df_majority.shape[0],  # to match majority class
@@ -62,8 +68,33 @@ def oversample(Xtrain, Ytrain, label):
     df_upsampled = pd.concat([df_majority, df_minority_upsampled])
     return df_upsampled
 
+
+# INFJ is the majority class
+def oversample_full(Xtrain, Ytrain):
+    # Separate majority and minority classes
+    df_labels = pd.Series(np.array(Ytrain))
+    df_posts = pd.Series(np.array(Xtrain))
+    df = pd.concat([df_labels, df_posts], axis=1)
+    df_majority = df[df.iloc[:, 0] == 'INFJ']
+    df_upsampled = df_majority
+    for label in full_labels_list:
+        if label=='INFJ':
+            continue
+        df_minority = df[df.iloc[:, 0] == label]
+        # Upsample minority class
+        df_minority_upsampled = resample(df_minority,
+                                         replace=True,  # sample with replacement
+                                         n_samples=df_majority.shape[0],  # to match majority class
+                                         random_state=123)  # reproducible results
+        # Combine majority class with upsampled minority class
+        df_upsampled = pd.concat([df_upsampled, df_minority_upsampled])
+
+    print(df_upsampled)
+    return df_upsampled
+
 ## Load dataset
 # =====================================================================================
+
 
 df = load_data.df
 
@@ -116,12 +147,11 @@ if features == 'tfidf':
     d = {}
     labels = df.columns[:-1]
     if full_or_partial_label: # 1 in 16 classification
-        # if oversample1:
+        if oversample_flag:
             # oversample minority classes to match majority class
-            # TODO: only works with 4 binary classification
-            # train_oversample = oversample(Xtrain, Ytrain, i)  # oversample
-            # Ytrain = train_oversample.iloc[:, 0]
-            # Xtrain = train_oversample.iloc[:, 1]
+            train_oversample = oversample_full(Xtrain, Ytrain)  # oversample
+            Ytrain = train_oversample.iloc[:, 0]
+            Xtrain = train_oversample.iloc[:, 1]
         if cv_gridsearch:
             vect = CountVectorizer()
             SVM = LinearSVC()
@@ -173,7 +203,7 @@ if features == 'tfidf':
             Ytrain = Y[:split_point]
             Yvalidation = Y[split_point:(split_point+1301)]
             Ytest = Y[(split_point+1301):-1]
-            if oversample1:
+            if oversample_flag:
                 train_oversample = oversample(Xtrain, Ytrain, i) #oversample
                 Ytrain = train_oversample.iloc[:,0]
                 Xtrain = train_oversample.iloc[:,1]
