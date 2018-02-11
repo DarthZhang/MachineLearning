@@ -16,20 +16,10 @@ from imblearn.over_sampling import SMOTE
 X = load_data_from_zero.X1
 Y = load_data_from_zero.Y
 
+
 label = pd.DataFrame(Y)
 
-
-
 X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2,train_size=0.8, random_state=42)
-
-print('Original dataset shape {}'.format(Counter(Y_train)))
-sm = SMOTE(random_state=42)
-vectorizer = TfidfVectorizer(stop_words='english')
-X_train = vectorizer.fit_transform(X_train)
-
-
-Xtrain, Ytrain = sm.fit_sample(X_train, Y_train)
-print('Resampled dataset shape {}'.format(Counter(Ytrain)))
 
 
 vectorizer = TfidfVectorizer(strip_accents=None, preprocessor=None)
@@ -40,28 +30,27 @@ knn = neighbors.KNeighborsClassifier()
 adb = AdaBoostClassifier()
 
 
-pipelines =  [Pipeline([('vect', vectorizer), ('svm', svm)]),
-            Pipeline([('vect',vectorizer), ('adb', adb)]),
-             Pipeline([('vect', vectorizer),('knn', knn),]),
-             Pipeline([('vect', vectorizer), ('rf', rf)])]
-
+pipelines =  [Pipeline([('vect', vectorizer),('knn', knn),]),
+             Pipeline([('vect', vectorizer), ('rf', rf)]),
+            Pipeline([('vect', vectorizer), ('svm', svm)]),
+            Pipeline([('vect',vectorizer), ('adb', adb)])]
 parameters = {
     'knn__n_neighbors': [3, 5, 7, 9, 11, 13],
     'knn__weights': ['uniform', 'distance'],
     'knn__algorithm': [  'brute'],
-    'vect__stop_words': [None, 'english']
+    'vect__stop_words': ['english']
 }
 
 parameters2 = {
-    'rf__criterion': ['gini','entropy'],
-    'rf__max_depth': [None ,4,5,6,7],
-    'rf__splitter': ['best'],  # Use random it brings to a non certain result
-    'rf__warm_start': [True, False],
-    'vect__stop_words': [None, 'english']
+ 'rf__criterion': ['gini','entropy'],
+ 'rf__max_depth': [None ,4,5,6,7],
+ 'rf__splitter': ['best'],  # Use random it brings to a non certain result
+ 'rf__warm_start': [True, False],
+ 'vect__stop_words': [None, 'english']
 }
 
 parameters3 = {
-    'vect__stop_words': [None, 'english'],
+    'vect__stop_words': ['english'],
     'svm__C': [  1.0, 10.],
     'svm__kernel': ['rbf', 'linear'],
     'svm__gamma': [ .01, .1]
@@ -69,11 +58,11 @@ parameters3 = {
 
 
 parameters4 = {
-    'vect__stop_words': [None, 'english'],
-    'adb__algorithm': ['SAMME', 'SAMME.R']
+ 'vect__stop_words': [None, 'english'],
+ 'adb__algorithm': ['SAMME', 'SAMME.R']
 }
 
-final_parameters = [parameters3, parameters4, parameters, parameters2]
+final_parameters = [parameters, parameters2,parameters3,parameters4]
 
 for (pip, pr) in zip(pipelines, final_parameters):
     grid_search = GridSearchCV(pip,
