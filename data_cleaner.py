@@ -1,4 +1,5 @@
 from nltk.tokenize.casual import TweetTokenizer
+import pandas as pd
 import string
 import itertools
 
@@ -15,6 +16,8 @@ class data_cleaner():
         else:
             return [x]
 
+
+    #Normal Preprocess
     def preprocess1(self, listOfLists):
         # not removing URLs
         X1 = []
@@ -42,4 +45,40 @@ class data_cleaner():
             X1.append(' '.join(output))
             print(i)
             i +=1
+        return X1
+
+
+    #Split the posts in more posts with respect to n_posts
+    def preprocess2(self, listOfLists, labels, n_posts):
+        # not removing URLs
+        X1 = pd.DataFrame(columns=['type', 'post'])
+        i =0
+        rows_index = 0
+        for sentences in listOfLists:
+            #First post
+            sentences = sentences.split('|||')
+            #50 post
+            tmp = []
+            for sentence in sentences:
+                sublist = ''
+                for word in sentence.translate(translator).split():
+                    if word.startswith('http'):
+                        continue
+                    x = tokenizer.tokenize(word)
+                    sublist = sublist + ' '+ x[0]
+                tmp.append(sublist)
+
+            index = 0
+            while index < len(tmp):
+                counter = 0
+                row = labels[i] + '.'
+                while counter < n_posts and index < len(tmp):
+                    row = row + tmp[index]
+                    index +=1
+                    counter +=1
+                X1.loc[rows_index] = row.split('.')
+                rows_index +=1
+                print(rows_index)
+            i += 1
+            print(i)
         return X1
