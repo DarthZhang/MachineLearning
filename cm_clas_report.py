@@ -16,9 +16,24 @@ def classification_report_df(report):
         row['f1_score'] = float(row_data[3])
         row['support'] = float(row_data[4])
         report_data.append(row)
+    # avg line
+    str_list = lines[-2].split(' ')
+    row_data = list(filter(None, str_list)) # fastest
+    row = {}
+    row['class'] = row_data[0]+row_data[1]+row_data[2]
+    row['precision'] = float(row_data[3])
+    row['recall'] = float(row_data[4])
+    row['f1_score'] = float(row_data[5])
+    row['support'] = float(row_data[6])
+    report_data.append(row)
+    # build final df
     df_report = pd.DataFrame.from_dict(report_data)
     df_latex = df_report.to_latex()
+    df_latex = df_latex.replace('\n\\toprule', '')  # erase top rule, mid rule and bottom rule line
+    df_latex = df_latex.replace('\n\\midrule', '')  # erase top rule, mid rule and bottom rule line
+    df_latex = df_latex.replace('\n\\bottomrule', '')  # erase top rule, mid rule and bottom rule line
     return df_latex
+
 
 # Plot confusion matrix
 def plot_confusion_matrix(cm, classes,
